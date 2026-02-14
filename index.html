@@ -84,10 +84,13 @@
             }
         }
 
-        // ②純正リマインダー連携（ショートカット呼び出し）
+// ②純正リマインダー連携（ショートカット呼び出し）
         function openReminder(text) {
+            // メモの内容をURLで送れる形式に変換
             const encodedText = encodeURIComponent(text);
-            // ショートカット名 'remind-me' を呼び出し、入力を渡す
+            
+            // ショートカット 'remind-me' を呼び出し、入力を渡す
+            // これにより、リマインダーのタイトルに自動で文字が入ります
             window.location.href = `shortcuts://run-shortcut?name=remind-me&input=${encodedText}`;
         }
 
@@ -116,3 +119,5 @@
     </script>
 </body>
 </html>
+
+
