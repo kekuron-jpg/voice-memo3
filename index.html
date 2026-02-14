@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Voice Memo PWA</title>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="https://via.placeholder.com/192/FF5733/FFFFFF?text=Voice">
+
+    <style>
+        :root { --primary: #007AFF; --bg: #f2f2f7; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        h2 { margin-top: 40px; color: #333; }
+        
+        /* 録音ボタンのスタイル */
+        #mic-btn {
+            width: 120px; height: 120px; border-radius: 50%; background: white;
+            border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            font-size: 50px; cursor: pointer; transition: transform 0.2s;
+            display: flex; align-items: center; justify-content: center; margin-bottom: 30px;
+        }
+        #mic-btn.recording { background: #ff3b30; transform: scale(1.1); animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255,59,48,0.7); } 70% { box-shadow: 0 0 0 20px rgba(255,59,48,0); } 100% { box-shadow: 0 0 0 0 rgba(255,59,48,0); } }
+
+        /* メモリストのスタイル */
+        #memo-list { width: 100%; max-width: 400px; list-style: none; padding: 0; }
+        .memo-item { 
+            background: white; padding: 15px; border-radius: 12px; margin-bottom: 10px;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .delete-btn { color: #ff3b30; border: none; background: none; font-size: 14px; cursor: pointer; }
+        .status { font-size: 14px; color: #888; margin-bottom: 10px; height: 20px; }
+    </style>
+</head>
+<body>
+
+    <h2>音声メモ</h2>
+    <div id="status" class="status"></div>
+    <button id="mic-btn">🎙️</button>
+
+    <ul id="memo-list"></ul>
+
+    <script>
+        const micBtn = document.getElementById('mic-btn');
+        const status = document.getElementById('status');
+        const memoList = document.getElementById('memo-list');
+
+        // 音声認識の準備 (Web Speech API)
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert("このブラウザは音声認識に対応していません。iPhoneのSafariで試してください。");
+        }
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'ja-JP';
+        recognition.interimResults = false;
+
+        // 録音開始/停止の切り替え
+        let isRecording = false;
+        micBtn.onclick = () => {
+            if (!isRecording) {
+                recognition.start();
+            } else {
+                recognition.stop();
+            }
+        };
+
+        recognition.onstart = () => {
+            isRecording = true;
+            micBtn.classList.add('recording');
+            status.innerText = "聞き取り中...";
+        };
+
+        recognition.onend = () => {
+            isRecording = false;
+            micBtn.classList.remove('recording');
+            status.innerText = "";
+        };
+
+        recognition.onresult = (event) => {
+            const text = event.results[0][0].transcript;
+            if (text) {
+                saveMemo(text);
+                renderMemos();
+            }
+        };
+
+        // ローカルストレージへの保存
+        function saveMemo(text) {
+            const memos = JSON.parse(localStorage.getItem('my-memos') || '[]');
+            memos.unshift({ id: Date.now(), text: text, date: new Date().toLocaleString() });
+            localStorage.setItem('my-memos', JSON.stringify(memos));
+        }
+
+        // 画面への表示
+        function renderMemos() {
+            const memos = JSON.parse(localStorage.getItem('my-memos') || '[]');
+            memoList.innerHTML = memos.map(m => `
+                <li class="memo-item">
+                    <span>${m.text}</span>
+                    <button class="delete-btn" onclick="deleteMemo(${m.id})">削除</button>
+                </li>
+            `).join('');
+        }
+
+        function deleteMemo(id) {
+            const memos = JSON.parse(localStorage.getItem('my-memos') || '[]');
+            const filtered = memos.filter(m => m.id !== id);
+            localStorage.setItem('my-memos', JSON.stringify(filtered));
+            renderMemos();
+        }
+
+        // 起動時にメモを表示
+        renderMemos();
+    </script>
+</body>
+</html>
