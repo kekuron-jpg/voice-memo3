@@ -3,87 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Voice Memo PWA</title>
+    <title>Realtime Voice Memo</title>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <style>
-        body { font-family: sans-serif; background: #f2f2f7; padding: 20px; text-align: center; }
-        #mic-btn { width: 100px; height: 100px; border-radius: 50%; border: none; background: white; shadow: 0 4px 10px rgba(0,0,0,0.1); font-size: 40px; margin: 20px 0; }
-        .recording { background: #ff3b30 !important; color: white; }
-        #status { color: #888; min-height: 1.5em; margin-bottom: 20px; font-size: 14px; }
-        #memo-list { list-style: none; padding: 0; text-align: left; max-width: 400px; margin: 0 auto; }
-        .memo-item { background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .delete-btn { color: red; border: none; background: none; }
+        body { font-family: sans-serif; background: #f2f2f7; padding: 20px; text-align: center; color: #333; }
+        #mic-btn { width: 90px; height: 90px; border-radius: 50%; border: none; background: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1); font-size: 40px; margin: 20px 0; transition: 0.3s; }
+        .recording { background: #ff3b30 !important; color: white; transform: scale(1.1); }
+        
+        /* リアルタイム表示エリア */
+        #interim-area { 
+            min-height: 50px; margin: 10px auto; padding: 15px; width: 85%;
+            background: rgba(255,255,255,0.5); border-radius: 10px;
+            font-style: italic; color: #666; border: 1px dashed #ccc;
+        }
+
+        #memo-list { list-style: none; padding: 0; text-align: left; max-width: 400px; margin: 20px auto; }
+        .memo-item { background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .delete-btn { color: #ff3b30; border: none; background: none; font-weight: bold; }
+        .date { font-size: 10px; color: #aaa; display: block; }
     </style>
 </head>
 <body>
 
-    <h2>音声メモ</h2>
-    <div id="status">ボタンを押して話してください</div>
+    <h2>リアルタイム音声メモ</h2>
+    
     <button id="mic-btn">🎙️</button>
+    
+    <div id="interim-area">ここに喋った内容がリアルタイムに出ます</div>
 
     <ul id="memo-list"></ul>
 
     <script>
         const micBtn = document.getElementById('mic-btn');
-        const status = document.getElementById('status');
+        const interimArea = document.getElementById('interim-area');
         const memoList = document.getElementById('memo-list');
 
-        // 音声認識の設定
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) {
-            status.innerText = "❌ お使いのブラウザは音声認識に対応していません";
-        } else {
-            const recognition = new SpeechRecognition();
-            recognition.lang = 'ja-JP';
-            recognition.continuous = false; // 喋り終わったら自動停止
-            recognition.interimResults = false;
+        const recognition = new SpeechRecognition();
+        
+        recognition.lang = 'ja-JP';
+        recognition.interimResults = true; // ← これがリアルタイム表示の鍵！
+        recognition.continuous = true;    // 長く喋っても止まらないように設定
 
-            let isRecording = false;
+        let isRecording = false;
 
-            micBtn.onclick = () => {
-                if (!isRecording) {
-                    try {
-                        recognition.start();
-                    } catch (e) {
-                        status.innerText = "エラー: " + e.message;
-                    }
+        micBtn.onclick = () => {
+            if (!isRecording) {
+                recognition.start();
+            } else {
+                recognition.stop();
+            }
+        };
+
+        recognition.onstart = () => {
+            isRecording = true;
+            micBtn.classList.add('recording');
+            interimArea.innerText = "聞き取り中...";
+        };
+
+        recognition.onend = () => {
+            isRecording = false;
+            micBtn.classList.remove('recording');
+            interimArea.innerText = "待機中...";
+        };
+
+        recognition.onresult = (event) => {
+            let interimTranscript = ''; // 確定前の文字列
+            let finalTranscript = '';   // 確定した文字列
+
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const transcript = event.results[i][0].transcript;
+                if (event.results[i].isFinal) {
+                    finalTranscript += transcript;
                 } else {
-                    recognition.stop();
+                    interimTranscript += transcript;
                 }
-            };
+            }
 
-            recognition.onstart = () => {
-                isRecording = true;
-                micBtn.classList.add('recording');
-                status.innerText = "🎙️ 聞き取り中...（話し終えてください）";
-            };
+            // リアルタイムに画面に表示
+            if (interimTranscript) {
+                interimArea.innerText = interimTranscript;
+            }
 
-            recognition.onend = () => {
-                isRecording = false;
-                micBtn.classList.remove('recording');
-                status.innerText = "保存しました";
-                setTimeout(() => { status.innerText = "ボタンを押して話してください"; }, 2000);
-            };
-
-            recognition.onresult = (event) => {
-                const text = event.results[0][0].transcript;
-                if (text) {
-                    saveMemo(text);
-                    renderMemos();
-                }
-            };
-
-            recognition.onerror = (event) => {
-                status.innerText = "❌ エラー発生: " + event.error;
-                isRecording = false;
-                micBtn.classList.remove('recording');
-            };
-        }
+            // 確定したらリストに保存
+            if (finalTranscript) {
+                saveMemo(finalTranscript);
+                renderMemos();
+                interimArea.innerText = ""; // 確定したのでリセット
+            }
+        };
 
         function saveMemo(text) {
             const memos = JSON.parse(localStorage.getItem('my-memos') || '[]');
-            memos.unshift({ id: Date.now(), text: text });
+            memos.unshift({ id: Date.now(), text: text, time: new Date().toLocaleTimeString() });
             localStorage.setItem('my-memos', JSON.stringify(memos));
         }
 
@@ -91,16 +104,18 @@
             const memos = JSON.parse(localStorage.getItem('my-memos') || '[]');
             memoList.innerHTML = memos.map(m => `
                 <li class="memo-item">
-                    <span>${m.text}</span>
-                    <button class="delete-btn" onclick="deleteMemo(${m.id})">削除</button>
+                    <div>
+                        <small class="date">${m.time}</small>
+                        <span>${m.text}</span>
+                    </div>
+                    <button class="delete-btn" onclick="deleteMemo(${m.id})">×</button>
                 </li>
             `).join('');
         }
 
         function deleteMemo(id) {
             const memos = JSON.parse(localStorage.getItem('my-memos') || '[]');
-            const filtered = memos.filter(m => m.id !== id);
-            localStorage.setItem('my-memos', JSON.stringify(filtered));
+            localStorage.setItem('my-memos', JSON.stringify(memos.filter(m => m.id !== id)));
             renderMemos();
         }
 
