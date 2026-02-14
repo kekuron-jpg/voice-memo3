@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Voice Editor Pro Max</title>
+    <title>Voice Editor Ultimate</title>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <style>
         :root { --accent: #007AFF; --bg: #f2f2f7; }
@@ -15,7 +15,7 @@
         .recording { background: #ff3b30 !important; color: white; transform: scale(1.1); animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255,59,48,0.7); } 70% { box-shadow: 0 0 0 15px rgba(255,59,48,0); } 100% { box-shadow: 0 0 0 0 rgba(255,59,48,0); } }
         
-        /* ★リアルタイム表示エリア */
+        /* リアルタイム表示エリア */
         #interim-area { 
             min-height: 45px; text-align: center; color: #007AFF; font-size: 15px; 
             margin-bottom: 10px; padding: 10px; background: rgba(255,255,255,0.6); 
@@ -36,8 +36,10 @@
         .memo-content { flex-grow: 1; }
         .memo-text { font-size: 16px; line-height: 1.5; display: block; margin-bottom: 12px; outline: none; border-bottom: 1px solid #f9f9f9; padding: 4px; }
         
-        .item-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 8px; }
-        .btn-small { padding: 6px 10px; border-radius: 8px; border: none; font-size: 14px; background: #f0f0f5; color: #555; }
+        .item-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 8px; flex-wrap: wrap; gap: 8px; }
+        .footer-left { display: flex; gap: 5px; }
+        .btn-small { padding: 6px 10px; border-radius: 8px; border: none; font-size: 13px; background: #f0f0f5; color: #555; cursor: pointer; }
+        .btn-remind { background: #e5f1ff; color: #007AFF; font-weight: bold; }
 
         /* 下部固定パネル */
         .floating-footer {
@@ -78,7 +80,7 @@
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         const recognition = new SpeechRecognition();
         recognition.lang = 'ja-JP';
-        recognition.interimResults = true; // リアルタイム表示有効
+        recognition.interimResults = true;
         recognition.continuous = true;
 
         let isRecording = false;
@@ -102,22 +104,12 @@
         recognition.onresult = (event) => {
             let interimTranscript = '';
             let finalTranscript = '';
-
             for (let i = event.resultIndex; i < event.results.length; i++) {
                 const transcript = event.results[i][0].transcript;
-                if (event.results[i].isFinal) {
-                    finalTranscript += transcript;
-                } else {
-                    interimTranscript += transcript;
-                }
+                if (event.results[i].isFinal) { finalTranscript += transcript; }
+                else { interimTranscript += transcript; }
             }
-
-            // ★リアルタイム表示を更新
-            if (interimTranscript) {
-                interimArea.innerText = interimTranscript;
-            }
-
-            // 確定したら保存してリスト更新
+            if (interimTranscript) interimArea.innerText = interimTranscript;
             if (finalTranscript) {
                 saveMemo(finalTranscript);
                 renderMemos();
@@ -141,6 +133,7 @@
             }
         }
 
+        // 並び替え
         function moveMemo(id, direction) {
             const memos = JSON.parse(localStorage.getItem('my-memos') || '[]');
             const index = memos.findIndex(m => m.id === id);
@@ -153,18 +146,22 @@
             renderMemos();
         }
 
+        // リマインダー連携（復活）
+        function openReminder(text) {
+            const title = text.length > 20 ? text.substring(0, 20) + "..." : text;
+            const fullContent = `${title}\n${text}`;
+            window.location.href = `shortcuts://run-shortcut?name=remind-me&input=${encodeURIComponent(fullContent)}`;
+        }
+
         function copySelected() {
             const checks = document.querySelectorAll('.memo-check:checked');
             if (checks.length === 0) return alert("メモを選択してください");
-            
-            // 画面に表示されている順番でテキストを取得
             const selectedTexts = Array.from(checks).map(c => {
                 const item = c.closest('.memo-item');
                 return item.querySelector('.memo-text').innerText;
             });
-
             navigator.clipboard.writeText(selectedTexts.join('\n')).then(() => {
-                alert("選択したメモをコピーしました！");
+                alert("コピーしました！");
             });
         }
 
@@ -172,12 +169,10 @@
             const checks = document.querySelectorAll('.memo-check:checked');
             if (checks.length === 0) return;
             if (!confirm(`${checks.length}件のメモを削除しますか？`)) return;
-            
             const selectedIds = Array.from(checks).map(c => Number(c.dataset.id));
             const memos = JSON.parse(localStorage.getItem('my-memos') || '[]');
             const filtered = memos.filter(m => !selectedIds.includes(m.id));
             localStorage.setItem('my-memos', JSON.stringify(filtered));
-            
             renderMemos();
             updateCount();
             selectAll.checked = false;
@@ -204,10 +199,11 @@
                     <div class="memo-content">
                         <span class="memo-text" contenteditable="true" onblur="updateMemo(${m.id}, this.innerText)">${m.text}</span>
                         <div class="item-footer">
-                            <div class="order-btns">
+                            <div class="footer-left">
                                 <button class="btn-small" onclick="moveMemo(${m.id}, 'up')">▲ 上へ</button>
                                 <button class="btn-small" onclick="moveMemo(${m.id}, 'down')">▼ 下へ</button>
                             </div>
+                            <button class="btn-small btn-remind" onclick="openReminder('${m.text.replace(/'/g, "\\'")}')">⏰ リマインド</button>
                         </div>
                     </div>
                 </li>
