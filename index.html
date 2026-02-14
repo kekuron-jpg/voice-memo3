@@ -7,21 +7,26 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <style>
         :root { --accent: #007AFF; --bg: #f2f2f7; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); padding: 20px; color: #333; padding-bottom: 100px; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); padding: 20px; color: #333; padding-bottom: 120px; }
         
         /* ヘッダー・録音エリア */
-        .header { sticky: top; background: var(--bg); padding-bottom: 10px; z-index: 10; }
-        #mic-btn { display: block; width: 65px; height: 65px; border-radius: 50%; border: none; background: white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); font-size: 28px; margin: 0 auto 10px; }
-        .recording { background: #ff3b30 !important; color: white; animation: pulse 1.5s infinite; }
-        #interim-area { min-height: 30px; text-align: center; color: #888; font-size: 14px; margin-bottom: 10px; }
-
-        /* まとめて操作パネル */
-        .batch-actions { 
-            display: flex; justify-content: space-between; align-items: center;
-            max-width: 500px; margin: 0 auto 15px; padding: 10px; background: white; border-radius: 12px;
+        .header { position: sticky; top: 0; background: var(--bg); padding-bottom: 10px; z-index: 100; }
+        #mic-btn { display: block; width: 65px; height: 65px; border-radius: 50%; border: none; background: white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); font-size: 28px; margin: 0 auto 10px; transition: 0.2s; }
+        .recording { background: #ff3b30 !important; color: white; transform: scale(1.1); animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255,59,48,0.7); } 70% { box-shadow: 0 0 0 15px rgba(255,59,48,0); } 100% { box-shadow: 0 0 0 0 rgba(255,59,48,0); } }
+        
+        /* ★リアルタイム表示エリア */
+        #interim-area { 
+            min-height: 45px; text-align: center; color: #007AFF; font-size: 15px; 
+            margin-bottom: 10px; padding: 10px; background: rgba(255,255,255,0.6); 
+            border-radius: 10px; font-style: italic; border: 1px dashed #007AFF;
         }
 
-        /* リストスタイル */
+        .batch-actions { 
+            display: flex; justify-content: space-between; align-items: center;
+            max-width: 500px; margin: 0 auto 15px; padding: 12px; background: white; border-radius: 12px;
+        }
+
         #memo-list { list-style: none; padding: 0; max-width: 500px; margin: 0 auto; }
         .memo-item { 
             background: white; padding: 15px; border-radius: 15px; margin-bottom: 12px; 
@@ -29,19 +34,18 @@
         }
         .checkbox-container { padding-top: 5px; }
         .memo-content { flex-grow: 1; }
-        .memo-text { font-size: 16px; line-height: 1.5; display: block; margin-bottom: 10px; outline: none; }
+        .memo-text { font-size: 16px; line-height: 1.5; display: block; margin-bottom: 12px; outline: none; border-bottom: 1px solid #f9f9f9; padding: 4px; }
         
-        .item-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f0f0f0; padding-top: 8px; }
-        .order-btns { display: flex; gap: 5px; }
-        .btn-small { padding: 4px 8px; border-radius: 5px; border: none; font-size: 14px; background: #eee; }
+        .item-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 8px; }
+        .btn-small { padding: 6px 10px; border-radius: 8px; border: none; font-size: 14px; background: #f0f0f5; color: #555; }
 
-        /* 下部固定ボタン */
+        /* 下部固定パネル */
         .floating-footer {
             position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-            display: flex; gap: 10px; background: rgba(255,255,255,0.9); padding: 15px;
-            border-radius: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); backdrop-filter: blur(10px);
+            display: flex; gap: 12px; background: rgba(255,255,255,0.95); padding: 15px 25px;
+            border-radius: 40px; box-shadow: 0 8px 30px rgba(0,0,0,0.15); backdrop-filter: blur(10px); z-index: 1000;
         }
-        .btn-main { padding: 10px 20px; border-radius: 20px; border: none; font-weight: bold; font-size: 14px; }
+        .btn-main { padding: 12px 20px; border-radius: 25px; border: none; font-weight: bold; font-size: 14px; cursor: pointer; }
         .btn-copy { background: var(--accent); color: white; }
         .btn-del { background: #ff3b30; color: white; }
     </style>
@@ -50,12 +54,12 @@
 
     <div class="header">
         <button id="mic-btn">🎙️</button>
-        <div id="interim-area">タップして録音</div>
+        <div id="interim-area">タップして録音開始</div>
     </div>
 
     <div class="batch-actions">
-        <label><input type="checkbox" id="select-all"> 全選択</label>
-        <span id="select-count" style="font-size: 12px; color: #666;">0件選択中</span>
+        <label style="font-weight: bold;"><input type="checkbox" id="select-all"> 全選択</label>
+        <span id="select-count">0件選択中</span>
     </div>
     
     <ul id="memo-list"></ul>
@@ -71,23 +75,55 @@
         const memoList = document.getElementById('memo-list');
         const selectAll = document.getElementById('select-all');
 
-        // 音声認識（これまでの機能を維持）
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         const recognition = new SpeechRecognition();
         recognition.lang = 'ja-JP';
-        recognition.interimResults = true;
+        recognition.interimResults = true; // リアルタイム表示有効
         recognition.continuous = true;
 
         let isRecording = false;
+
         micBtn.onclick = () => { if (!isRecording) { recognition.start(); } else { recognition.stop(); } };
-        recognition.onstart = () => { isRecording = true; micBtn.classList.add('recording'); };
-        recognition.onend = () => { isRecording = false; micBtn.classList.remove('recording'); interimArea.innerText = ""; };
-        recognition.onresult = (event) => {
-            let finalTranscript = '';
-            for (let i = event.resultIndex; i < event.results.length; i++) {
-                if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
+
+        recognition.onstart = () => { 
+            isRecording = true; 
+            micBtn.classList.add('recording'); 
+            interimArea.innerText = "聞き取り中..."; 
+        };
+        
+        recognition.onend = () => { 
+            isRecording = false; 
+            micBtn.classList.remove('recording'); 
+            if (interimArea.innerText.includes("聞き取り中")) {
+                interimArea.innerText = "タップして録音開始";
             }
-            if (finalTranscript) { saveMemo(finalTranscript); renderMemos(); }
+        };
+
+        recognition.onresult = (event) => {
+            let interimTranscript = '';
+            let finalTranscript = '';
+
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const transcript = event.results[i][0].transcript;
+                if (event.results[i].isFinal) {
+                    finalTranscript += transcript;
+                } else {
+                    interimTranscript += transcript;
+                }
+            }
+
+            // ★リアルタイム表示を更新
+            if (interimTranscript) {
+                interimArea.innerText = interimTranscript;
+            }
+
+            // 確定したら保存してリスト更新
+            if (finalTranscript) {
+                saveMemo(finalTranscript);
+                renderMemos();
+                interimArea.innerText = "保存しました";
+                setTimeout(() => { if(!isRecording) interimArea.innerText = "タップして録音開始"; }, 2000);
+            }
         };
 
         function saveMemo(text) {
@@ -105,7 +141,6 @@
             }
         }
 
-        // 並び替え機能
         function moveMemo(id, direction) {
             const memos = JSON.parse(localStorage.getItem('my-memos') || '[]');
             const index = memos.findIndex(m => m.id === id);
@@ -118,35 +153,36 @@
             renderMemos();
         }
 
-        // 一括コピー
         function copySelected() {
             const checks = document.querySelectorAll('.memo-check:checked');
-            const memos = JSON.parse(localStorage.getItem('my-memos') || '[]');
+            if (checks.length === 0) return alert("メモを選択してください");
+            
+            // 画面に表示されている順番でテキストを取得
             const selectedTexts = Array.from(checks).map(c => {
-                const memo = memos.find(m => m.id == c.dataset.id);
-                return memo ? memo.text : '';
+                const item = c.closest('.memo-item');
+                return item.querySelector('.memo-text').innerText;
             });
 
-            if (selectedTexts.length === 0) return alert("選択してください");
-            
             navigator.clipboard.writeText(selectedTexts.join('\n')).then(() => {
-                alert("コピーしました！");
+                alert("選択したメモをコピーしました！");
             });
         }
 
-        // 一括削除
         function deleteSelected() {
-            if (!confirm("選択したメモを削除しますか？")) return;
             const checks = document.querySelectorAll('.memo-check:checked');
+            if (checks.length === 0) return;
+            if (!confirm(`${checks.length}件のメモを削除しますか？`)) return;
+            
             const selectedIds = Array.from(checks).map(c => Number(c.dataset.id));
             const memos = JSON.parse(localStorage.getItem('my-memos') || '[]');
             const filtered = memos.filter(m => !selectedIds.includes(m.id));
             localStorage.setItem('my-memos', JSON.stringify(filtered));
+            
             renderMemos();
             updateCount();
+            selectAll.checked = false;
         }
 
-        // 全選択/解除
         selectAll.onclick = () => {
             const checks = document.querySelectorAll('.memo-check');
             checks.forEach(c => c.checked = selectAll.checked);
@@ -169,10 +205,9 @@
                         <span class="memo-text" contenteditable="true" onblur="updateMemo(${m.id}, this.innerText)">${m.text}</span>
                         <div class="item-footer">
                             <div class="order-btns">
-                                <button class="btn-small" onclick="moveMemo(${m.id}, 'up')">▲</button>
-                                <button class="btn-small" onclick="moveMemo(${m.id}, 'down')">▼</button>
+                                <button class="btn-small" onclick="moveMemo(${m.id}, 'up')">▲ 上へ</button>
+                                <button class="btn-small" onclick="moveMemo(${m.id}, 'down')">▼ 下へ</button>
                             </div>
-                            <span style="font-size:10px; color:#ccc;">ID:${m.id.toString().slice(-4)}</span>
                         </div>
                     </div>
                 </li>
