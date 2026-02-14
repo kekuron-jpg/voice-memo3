@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Voice Editor Pro</title>
+    <title>Voice Editor Ultra</title>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <style>
         :root { --accent: #007AFF; --bg: #f2f2f7; }
@@ -16,11 +16,12 @@
         
         #memo-list { list-style: none; padding: 0; max-width: 500px; margin: 0 auto; }
         .memo-item { background: white; padding: 15px; border-radius: 15px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-        .memo-text { font-size: 17px; line-height: 1.5; display: block; margin-bottom: 15px; padding: 5px; outline: none; }
+        .memo-text { font-size: 17px; line-height: 1.5; display: block; margin-bottom: 15px; padding: 5px; outline: none; border-bottom: 1px solid #f0f0f0; }
         
-        .actions { display: flex; gap: 8px; justify-content: flex-end; border-top: 1px solid #eee; padding-top: 10px; }
-        .btn { padding: 8px 14px; border-radius: 20px; border: none; font-size: 12px; font-weight: 600; }
+        .actions { display: flex; gap: 8px; justify-content: flex-end; padding-top: 5px; }
+        .btn { padding: 8px 12px; border-radius: 15px; border: none; font-size: 12px; font-weight: 600; cursor: pointer; }
         .remind-btn { background: #007AFF; color: white; }
+        .copy-btn { background: #e5e5ea; color: #333; }
         .delete-btn { background: #fff1f0; color: #ff3b30; }
     </style>
 </head>
@@ -55,18 +56,11 @@
             let interimTranscript = '';
             let finalTranscript = '';
             for (let i = event.resultIndex; i < event.results.length; i++) {
-                const transcript = event.results[i][0].transcript;
-                if (event.results[i].isFinal) { finalTranscript += transcript; }
-                else { interimTranscript += transcript; }
+                if (event.results[i].isFinal) { finalTranscript += event.results[i][0].transcript; }
+                else { interimTranscript += event.results[i][0].transcript; }
             }
-            // ①リアルタイム表示の復活
             if (interimTranscript) interimArea.innerText = interimTranscript;
-            
-            if (finalTranscript) {
-                saveMemo(finalTranscript);
-                renderMemos();
-                interimArea.innerText = "";
-            }
+            if (finalTranscript) { saveMemo(finalTranscript); renderMemos(); interimArea.innerText = ""; }
         };
 
         function saveMemo(text) {
@@ -84,14 +78,21 @@
             }
         }
 
-// ②純正リマインダー連携（ショートカット呼び出し）
+        // リマインダー連携：タイトル20文字＋全文メモ
         function openReminder(text) {
-            // メモの内容をURLで送れる形式に変換
-            const encodedText = encodeURIComponent(text);
-            
-            // ショートカット 'remind-me' を呼び出し、入力を渡す
-            // これにより、リマインダーのタイトルに自動で文字が入ります
-            window.location.href = `shortcuts://run-shortcut?name=remind-me&input=${encodedText}`;
+            const title = text.length > 20 ? text.substring(0, 20) + "..." : text;
+            // タイトルと全文を改行で区切って送る
+            const fullContent = `${title}\n${text}`;
+            window.location.href = `shortcuts://run-shortcut?name=remind-me&input=${encodeURIComponent(fullContent)}`;
+        }
+
+        // コピー機能
+        function copyToClipboard(text, btn) {
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = btn.innerText;
+                btn.innerText = "完了！";
+                setTimeout(() => btn.innerText = originalText, 2000);
+            });
         }
 
         function renderMemos() {
@@ -100,7 +101,8 @@
                 <li class="memo-item">
                     <span class="memo-text" contenteditable="true" onblur="updateMemo(${m.id}, this.innerText)">${m.text}</span>
                     <div class="actions">
-                        <button class="btn remind-btn" onclick="openReminder('${m.text.replace(/'/g, "\\'")}')">⏰ リマインダー</button>
+                        <button class="btn copy-btn" onclick="copyToClipboard('${m.text.replace(/'/g, "\\'")}', this)">📋 コピー</button>
+                        <button class="btn remind-btn" onclick="openReminder('${m.text.replace(/'/g, "\\'")}')">⏰ リマインド</button>
                         <button class="btn delete-btn" onclick="deleteMemo(${m.id})">削除</button>
                     </div>
                 </li>
@@ -119,5 +121,4 @@
     </script>
 </body>
 </html>
-
 
