@@ -3,51 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Voice Editor Ultimate</title>
+    <title>Voice Editor Pro</title>
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
         :root { --accent: #007AFF; --bg: #f2f2f7; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); padding: 20px; color: #333; padding-bottom: 120px; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); padding: 15px; color: #333; padding-bottom: 100px; -webkit-tap-highlight-color: transparent; }
         
-        /* ヘッダー・録音エリア */
-        .header { position: sticky; top: 0; background: var(--bg); padding-bottom: 10px; z-index: 100; }
-        #mic-btn { display: block; width: 65px; height: 65px; border-radius: 50%; border: none; background: white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); font-size: 28px; margin: 0 auto 10px; transition: 0.2s; }
-        .recording { background: #ff3b30 !important; color: white; transform: scale(1.1); animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255,59,48,0.7); } 70% { box-shadow: 0 0 0 15px rgba(255,59,48,0); } 100% { box-shadow: 0 0 0 0 rgba(255,59,48,0); } }
+        .header { position: sticky; top: 0; background: var(--bg); padding-bottom: 5px; z-index: 100; }
+        #mic-btn { display: block; width: 60px; height: 60px; border-radius: 50%; border: none; background: white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); font-size: 26px; margin: 0 auto 5px; }
+        .recording { background: #ff3b30 !important; color: white; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255,59,48,0.7); } 70% { box-shadow: 0 0 0 10px rgba(255,59,48,0); } 100% { box-shadow: 0 0 0 0 rgba(255,59,48,0); } }
         
-        /* リアルタイム表示エリア */
-        #interim-area { 
-            min-height: 45px; text-align: center; color: #007AFF; font-size: 15px; 
-            margin-bottom: 10px; padding: 10px; background: rgba(255,255,255,0.6); 
-            border-radius: 10px; font-style: italic; border: 1px dashed #007AFF;
-        }
+        #interim-area { min-height: 40px; text-align: center; color: var(--accent); font-size: 14px; margin-bottom: 5px; padding: 5px; font-style: italic; }
 
         .batch-actions { 
             display: flex; justify-content: space-between; align-items: center;
-            max-width: 500px; margin: 0 auto 15px; padding: 12px; background: white; border-radius: 12px;
+            max-width: 500px; margin: 0 auto 10px; padding: 10px 15px; background: white; border-radius: 10px; font-size: 14px;
         }
 
         #memo-list { list-style: none; padding: 0; max-width: 500px; margin: 0 auto; }
         .memo-item { 
-            background: white; padding: 15px; border-radius: 15px; margin-bottom: 12px; 
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; align-items: flex-start; gap: 10px;
+            background: white; padding: 12px; border-radius: 12px; margin-bottom: 8px; 
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05); display: flex; align-items: flex-start; gap: 10px;
+            cursor: grab; /* 掴めるアイコン */
         }
-        .checkbox-container { padding-top: 5px; }
-        .memo-content { flex-grow: 1; }
-        .memo-text { font-size: 16px; line-height: 1.5; display: block; margin-bottom: 12px; outline: none; border-bottom: 1px solid #f9f9f9; padding: 4px; }
+        .memo-item:active { cursor: grabbing; }
+        .checkbox-container { padding-top: 4px; }
+        .memo-content { flex-grow: 1; overflow: hidden; }
+        .memo-text { font-size: 16px; line-height: 1.4; display: block; margin-bottom: 8px; outline: none; word-wrap: break-word; }
         
-        .item-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 8px; flex-wrap: wrap; gap: 8px; }
-        .footer-left { display: flex; gap: 5px; }
-        .btn-small { padding: 6px 10px; border-radius: 8px; border: none; font-size: 13px; background: #f0f0f5; color: #555; cursor: pointer; }
-        .btn-remind { background: #e5f1ff; color: #007AFF; font-weight: bold; }
+        .item-footer { display: flex; justify-content: flex-end; align-items: center; }
+        .btn-remind { padding: 4px 10px; border-radius: 6px; border: none; font-size: 12px; background: #e5f1ff; color: var(--accent); font-weight: 600; }
 
-        /* 下部固定パネル */
+        /* iPhone 6.1インチ（14/15等）向けに最適化した横一行の固定パネル */
         .floating-footer {
-            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-            display: flex; gap: 12px; background: rgba(255,255,255,0.95); padding: 15px 25px;
-            border-radius: 40px; box-shadow: 0 8px 30px rgba(0,0,0,0.15); backdrop-filter: blur(10px); z-index: 1000;
+            position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 8px; background: rgba(255,255,255,0.92); padding: 10px;
+            border-radius: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.15); backdrop-filter: blur(10px);
+            z-index: 1000; width: 90%; max-width: 360px; justify-content: center;
         }
-        .btn-main { padding: 12px 20px; border-radius: 25px; border: none; font-weight: bold; font-size: 14px; cursor: pointer; }
+        .btn-main { 
+            flex: 1; padding: 10px 0; border-radius: 12px; border: none; font-weight: bold; 
+            font-size: 13px; cursor: pointer; white-space: nowrap; text-align: center;
+        }
         .btn-copy { background: var(--accent); color: white; }
         .btn-del { background: #ff3b30; color: white; }
     </style>
@@ -56,11 +55,11 @@
 
     <div class="header">
         <button id="mic-btn">🎙️</button>
-        <div id="interim-area">タップして録音開始</div>
+        <div id="interim-area">タップして録音</div>
     </div>
 
     <div class="batch-actions">
-        <label style="font-weight: bold;"><input type="checkbox" id="select-all"> 全選択</label>
+        <label><input type="checkbox" id="select-all"> 全選択</label>
         <span id="select-count">0件選択中</span>
     </div>
     
@@ -77,45 +76,26 @@
         const memoList = document.getElementById('memo-list');
         const selectAll = document.getElementById('select-all');
 
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        // 音声認識
+        const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
         const recognition = new SpeechRecognition();
         recognition.lang = 'ja-JP';
         recognition.interimResults = true;
         recognition.continuous = true;
 
         let isRecording = false;
-
         micBtn.onclick = () => { if (!isRecording) { recognition.start(); } else { recognition.stop(); } };
-
-        recognition.onstart = () => { 
-            isRecording = true; 
-            micBtn.classList.add('recording'); 
-            interimArea.innerText = "聞き取り中..."; 
-        };
-        
-        recognition.onend = () => { 
-            isRecording = false; 
-            micBtn.classList.remove('recording'); 
-            if (interimArea.innerText.includes("聞き取り中")) {
-                interimArea.innerText = "タップして録音開始";
-            }
-        };
+        recognition.onstart = () => { isRecording = true; micBtn.classList.add('recording'); interimArea.innerText = "聴き取り中..."; };
+        recognition.onend = () => { isRecording = false; micBtn.classList.remove('recording'); };
 
         recognition.onresult = (event) => {
-            let interimTranscript = '';
-            let finalTranscript = '';
+            let interim = ''; let final = '';
             for (let i = event.resultIndex; i < event.results.length; i++) {
-                const transcript = event.results[i][0].transcript;
-                if (event.results[i].isFinal) { finalTranscript += transcript; }
-                else { interimTranscript += transcript; }
+                if (event.results[i].isFinal) final += event.results[i][0].transcript;
+                else interim += event.results[i][0].transcript;
             }
-            if (interimTranscript) interimArea.innerText = interimTranscript;
-            if (finalTranscript) {
-                saveMemo(finalTranscript);
-                renderMemos();
-                interimArea.innerText = "保存しました";
-                setTimeout(() => { if(!isRecording) interimArea.innerText = "タップして録音開始"; }, 2000);
-            }
+            if (interim) interimArea.innerText = interim;
+            if (final) { saveMemo(final); renderMemos(); interimArea.innerText = ""; }
         };
 
         function saveMemo(text) {
@@ -133,54 +113,34 @@
             }
         }
 
-        // 並び替え
-        function moveMemo(id, direction) {
-            const memos = JSON.parse(localStorage.getItem('my-memos') || '[]');
-            const index = memos.findIndex(m => m.id === id);
-            if (direction === 'up' && index > 0) {
-                [memos[index], memos[index - 1]] = [memos[index - 1], memos[index]];
-            } else if (direction === 'down' && index < memos.length - 1) {
-                [memos[index], memos[index + 1]] = [memos[index + 1], memos[index]];
-            }
-            localStorage.setItem('my-memos', JSON.stringify(memos));
-            renderMemos();
-        }
-
-        // リマインダー連携（復活）
         function openReminder(text) {
             const title = text.length > 20 ? text.substring(0, 20) + "..." : text;
             const fullContent = `${title}\n${text}`;
             window.location.href = `shortcuts://run-shortcut?name=remind-me&input=${encodeURIComponent(fullContent)}`;
         }
 
+        // 一括コピー
         function copySelected() {
             const checks = document.querySelectorAll('.memo-check:checked');
-            if (checks.length === 0) return alert("メモを選択してください");
-            const selectedTexts = Array.from(checks).map(c => {
-                const item = c.closest('.memo-item');
-                return item.querySelector('.memo-text').innerText;
-            });
-            navigator.clipboard.writeText(selectedTexts.join('\n')).then(() => {
-                alert("コピーしました！");
-            });
+            if (checks.length === 0) return;
+            const texts = Array.from(checks).map(c => c.closest('.memo-item').querySelector('.memo-text').innerText);
+            navigator.clipboard.writeText(texts.join('\n')).then(() => alert("コピー完了"));
         }
 
+        // 一括削除
         function deleteSelected() {
             const checks = document.querySelectorAll('.memo-check:checked');
-            if (checks.length === 0) return;
-            if (!confirm(`${checks.length}件のメモを削除しますか？`)) return;
-            const selectedIds = Array.from(checks).map(c => Number(c.dataset.id));
+            if (checks.length === 0 || !confirm(`${checks.length}件削除しますか？`)) return;
+            const ids = Array.from(checks).map(c => Number(c.dataset.id));
             const memos = JSON.parse(localStorage.getItem('my-memos') || '[]');
-            const filtered = memos.filter(m => !selectedIds.includes(m.id));
-            localStorage.setItem('my-memos', JSON.stringify(filtered));
+            localStorage.setItem('my-memos', JSON.stringify(memos.filter(m => !ids.includes(m.id))));
             renderMemos();
             updateCount();
             selectAll.checked = false;
         }
 
         selectAll.onclick = () => {
-            const checks = document.querySelectorAll('.memo-check');
-            checks.forEach(c => c.checked = selectAll.checked);
+            document.querySelectorAll('.memo-check').forEach(c => c.checked = selectAll.checked);
             updateCount();
         };
 
@@ -192,23 +152,34 @@
         function renderMemos() {
             const memos = JSON.parse(localStorage.getItem('my-memos') || '[]');
             memoList.innerHTML = memos.map(m => `
-                <li class="memo-item">
+                <li class="memo-item" data-id="${m.id}">
                     <div class="checkbox-container">
                         <input type="checkbox" class="memo-check" data-id="${m.id}" onchange="updateCount()">
                     </div>
                     <div class="memo-content">
                         <span class="memo-text" contenteditable="true" onblur="updateMemo(${m.id}, this.innerText)">${m.text}</span>
                         <div class="item-footer">
-                            <div class="footer-left">
-                                <button class="btn-small" onclick="moveMemo(${m.id}, 'up')">▲ 上へ</button>
-                                <button class="btn-small" onclick="moveMemo(${m.id}, 'down')">▼ 下へ</button>
-                            </div>
-                            <button class="btn-small btn-remind" onclick="openReminder('${m.text.replace(/'/g, "\\'")}')">⏰ リマインド</button>
+                            <button class="btn-remind" onclick="openReminder('${m.text.replace(/'/g, "\\'")}')">⏰ リマインド</button>
                         </div>
                     </div>
                 </li>
             `).join('');
         }
+
+        // ★ドラッグ並び替えの設定
+        new Sortable(memoList, {
+            animation: 150,
+            onEnd: function () {
+                const newMemos = [];
+                document.querySelectorAll('.memo-item').forEach(el => {
+                    const id = Number(el.dataset.id);
+                    const memos = JSON.parse(localStorage.getItem('my-memos') || '[]');
+                    const found = memos.find(m => m.id === id);
+                    if (found) newMemos.push(found);
+                });
+                localStorage.setItem('my-memos', JSON.stringify(newMemos));
+            }
+        });
 
         renderMemos();
     </script>
