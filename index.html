@@ -3,35 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Realtime Voice Memo</title>
+    <title>Voice Memo & Remind</title>
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <style>
-        body { font-family: sans-serif; background: #f2f2f7; padding: 20px; text-align: center; color: #333; }
-        #mic-btn { width: 90px; height: 90px; border-radius: 50%; border: none; background: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1); font-size: 40px; margin: 20px 0; transition: 0.3s; }
-        .recording { background: #ff3b30 !important; color: white; transform: scale(1.1); }
-        
-        /* リアルタイム表示エリア */
-        #interim-area { 
-            min-height: 50px; margin: 10px auto; padding: 15px; width: 85%;
-            background: rgba(255,255,255,0.5); border-radius: 10px;
-            font-style: italic; color: #666; border: 1px dashed #ccc;
-        }
-
-        #memo-list { list-style: none; padding: 0; text-align: left; max-width: 400px; margin: 20px auto; }
-        .memo-item { background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .delete-btn { color: #ff3b30; border: none; background: none; font-weight: bold; }
-        .date { font-size: 10px; color: #aaa; display: block; }
+        body { font-family: -apple-system, sans-serif; background: #f2f2f7; padding: 20px; text-align: center; }
+        #mic-btn { width: 80px; height: 80px; border-radius: 50%; border: none; background: white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); font-size: 30px; margin-bottom: 20px; }
+        .recording { background: #ff3b30 !important; color: white; }
+        #interim-area { min-height: 40px; margin: 10px auto; padding: 10px; width: 90%; background: #fff; border-radius: 10px; font-size: 14px; color: #666; }
+        #memo-list { list-style: none; padding: 0; max-width: 400px; margin: 20px auto; }
+        .memo-item { background: white; padding: 15px; border-radius: 12px; margin-bottom: 10px; text-align: left; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .memo-text { font-size: 16px; display: block; margin-bottom: 10px; }
+        .actions { display: flex; gap: 10px; justify-content: flex-end; }
+        .btn { padding: 8px 12px; border-radius: 8px; border: none; font-size: 12px; cursor: pointer; }
+        .remind-btn { background: #007AFF; color: white; }
+        .delete-btn { background: #ff3b30; color: white; }
     </style>
 </head>
 <body>
 
-    <h2>リアルタイム音声メモ</h2>
-    
+    <h2>音声リマインダー</h2>
     <button id="mic-btn">🎙️</button>
-    
-    <div id="interim-area">ここに喋った内容がリアルタイムに出ます</div>
-
+    <div id="interim-area"></div>
     <ul id="memo-list"></ul>
 
     <script>
@@ -41,74 +33,59 @@
 
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         const recognition = new SpeechRecognition();
-        
         recognition.lang = 'ja-JP';
-        recognition.interimResults = true; // ← これがリアルタイム表示の鍵！
-        recognition.continuous = true;    // 長く喋っても止まらないように設定
+        recognition.interimResults = true;
+        recognition.continuous = true;
 
         let isRecording = false;
 
         micBtn.onclick = () => {
-            if (!isRecording) {
-                recognition.start();
-            } else {
-                recognition.stop();
-            }
+            if (!isRecording) { recognition.start(); } else { recognition.stop(); }
         };
 
-        recognition.onstart = () => {
-            isRecording = true;
-            micBtn.classList.add('recording');
-            interimArea.innerText = "聞き取り中...";
-        };
-
-        recognition.onend = () => {
-            isRecording = false;
-            micBtn.classList.remove('recording');
-            interimArea.innerText = "待機中...";
-        };
+        recognition.onstart = () => { isRecording = true; micBtn.classList.add('recording'); };
+        recognition.onend = () => { isRecording = false; micBtn.classList.remove('recording'); };
 
         recognition.onresult = (event) => {
-            let interimTranscript = ''; // 確定前の文字列
-            let finalTranscript = '';   // 確定した文字列
-
+            let interimTranscript = '';
+            let finalTranscript = '';
             for (let i = event.resultIndex; i < event.results.length; i++) {
-                const transcript = event.results[i][0].transcript;
-                if (event.results[i].isFinal) {
-                    finalTranscript += transcript;
-                } else {
-                    interimTranscript += transcript;
-                }
+                if (event.results[i].isFinal) { finalTranscript += event.results[i][0].transcript; }
+                else { interimTranscript += event.results[i][0].transcript; }
             }
-
-            // リアルタイムに画面に表示
-            if (interimTranscript) {
-                interimArea.innerText = interimTranscript;
-            }
-
-            // 確定したらリストに保存
-            if (finalTranscript) {
-                saveMemo(finalTranscript);
-                renderMemos();
-                interimArea.innerText = ""; // 確定したのでリセット
-            }
+            interimArea.innerText = interimTranscript;
+            if (finalTranscript) { saveMemo(finalTranscript); renderMemos(); interimArea.innerText = ""; }
         };
 
         function saveMemo(text) {
             const memos = JSON.parse(localStorage.getItem('my-memos') || '[]');
-            memos.unshift({ id: Date.now(), text: text, time: new Date().toLocaleTimeString() });
+            memos.unshift({ id: Date.now(), text: text });
             localStorage.setItem('my-memos', JSON.stringify(memos));
+        }
+
+        // リマインダー登録用の関数
+        function addToReminder(text) {
+            // iPhoneの「カレンダー」経由でリマインダーを入れるためのURLを作成
+            // ics形式（カレンダー予約ファイル）を生成して開く手法
+            const title = encodeURIComponent(text);
+            const now = new Date();
+            const start = new Date(now.getTime() + 60 * 60 * 1000).toISOString().replace(/-|:|\.\d+/g, ""); // 1時間後
+            
+            // シンプルに「カレンダーに追加」画面を呼び出すURL（iPhone標準）
+            // 注意: iPhoneの仕様上、直接リマインダーアプリに「日付付き」で飛ばすのはURLスキームだけでは限界があるため
+            // カレンダー登録画面を開きます。そこからリマインダーへ保存も可能です。
+            window.location.href = `data:text/calendar;charset=utf8,BEGIN:VCALENDAR%0AVERSION:2.0%0ABEGIN:VEVENT%0AURL:${window.location.href}%0ASUMMARY:${title}%0ADTSTART:${start}%0ADTEND:${start}%0AEND:VEVENT%0AEND:VCALENDAR`;
         }
 
         function renderMemos() {
             const memos = JSON.parse(localStorage.getItem('my-memos') || '[]');
             memoList.innerHTML = memos.map(m => `
                 <li class="memo-item">
-                    <div>
-                        <small class="date">${m.time}</small>
-                        <span>${m.text}</span>
+                    <span class="memo-text">${m.text}</span>
+                    <div class="actions">
+                        <button class="btn remind-btn" onclick="addToReminder('${m.text.replace(/'/g, "\\'")}')">⏰ リマインド</button>
+                        <button class="btn delete-btn" onclick="deleteMemo(${m.id})">削除</button>
                     </div>
-                    <button class="delete-btn" onclick="deleteMemo(${m.id})">×</button>
                 </li>
             `).join('');
         }
